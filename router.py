@@ -18,6 +18,7 @@ No third-party libs: urllib + json only.
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -103,8 +104,14 @@ def call_system_one(prompt: str, timeout_s: int = 30) -> dict:
 
 
 def route_prompt(prompt: str, threshold: float = DEFAULT_THRESHOLD) -> dict:
-    """Route one prompt. Returns probs, booleans, and route list."""
+    """Route one prompt. Returns probs, booleans, route list, and timing info.
+
+    latency_s is measured client-side (includes network). tps_out is an
+    approximation: output tokens divided by latency.
+    """
+    start = time.perf_counter()
     response = call_system_one(prompt)
+    latency_s = time.perf_counter() - start
     work_p = float(response["answers"]["is_work"]["noul"])
     life_p = float(response["answers"]["is_life"]["noul"])
     to_work = work_p >= threshold
@@ -114,6 +121,9 @@ def route_prompt(prompt: str, threshold: float = DEFAULT_THRESHOLD) -> dict:
         routes.append("work")
     if to_life:
         routes.append("life")
+    usage = response.get("usage", {}) or {}
+    in_tok = int(usage.get("input_tokens", 0) or 0)
+    out_tok = int(usage.get("output_tokens", 0) or 0)
     return {
         "prompt": prompt,
         "work_prob": work_p,
@@ -122,7 +132,11 @@ def route_prompt(prompt: str, threshold: float = DEFAULT_THRESHOLD) -> dict:
         "to_life": to_life,
         "routes": routes,
         "threshold": threshold,
-        "usage": response.get("usage", {}),
+        "latency_s": latency_s,
+        "input_tokens": in_tok,
+        "output_tokens": out_tok,
+        "tps_out_approx": (out_tok / latency_s) if latency_s > 0 else 0.0,
+        "usage": usage,
     }
 
 

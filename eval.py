@@ -60,6 +60,8 @@ TEST_CASES = [
 def run(threshold: float, fail_only: bool, sleep_s: float = 0.3) -> int:
     n = len(TEST_CASES)
     exact_ok = work_ok = life_ok = errors = 0
+    lat_sum = in_sum = out_sum = 0
+    lat_max = 0.0
 
     for i, (cid, prompt, exp_work, exp_life) in enumerate(TEST_CASES):
         try:
@@ -73,6 +75,10 @@ def run(threshold: float, fail_only: bool, sleep_s: float = 0.3) -> int:
         exact_ok += ok
         work_ok += got_work == exp_work
         life_ok += got_life == exp_life
+        lat_sum += r["latency_s"]
+        lat_max = max(lat_max, r["latency_s"])
+        in_sum += r["input_tokens"]
+        out_sum += r["output_tokens"]
         if fail_only and ok:
             pass
         else:
@@ -80,7 +86,9 @@ def run(threshold: float, fail_only: bool, sleep_s: float = 0.3) -> int:
             print(
                 f"[{cid}] {mark} work={int(got_work)} (exp {int(exp_work)}, p={r['work_prob']:.3f}) "
                 f"life={int(got_life)} (exp {int(exp_life)}, p={r['life_prob']:.3f}) "
-                f"routes={r['routes'] or ['none']} :: {prompt}"
+                f"routes={r['routes'] or ['none']} :: {prompt} "
+                f"[{r['latency_s']:.2f}s, tok {r['input_tokens']}/{r['output_tokens']}, "
+                f"~{r['tps_out_approx']:.1f} tok/s]"
             )
         if i < n - 1:
             time.sleep(sleep_s)
@@ -93,6 +101,11 @@ def run(threshold: float, fail_only: bool, sleep_s: float = 0.3) -> int:
         print(f"work label:   {work_ok}/{evaluated} = {work_ok / evaluated:.1%}")
         print(f"life label:   {life_ok}/{evaluated} = {life_ok / evaluated:.1%}")
     print(f"threshold:    {threshold}")
+    if evaluated:
+        print(f"avg latency:  {lat_sum / evaluated:.2f}s per call (max {lat_max:.2f}s)")
+        print(f"tokens:       {in_sum} in / {out_sum} out total")
+        if lat_sum > 0:
+            print(f"throughput:   ~{out_sum / lat_sum:.1f} output tok/s (approx, client-side)")
     return 0 if (errors == 0 and exact_ok == evaluated) else 1
 
 
