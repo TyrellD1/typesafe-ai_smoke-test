@@ -381,7 +381,7 @@ function drawLatency() {
   });
   const ax = X(AVG_LAT);
   mark(svg, 'line', {x1: ax, y1: t - 2, x2: ax, y2: h - b, class: 'series-secondary'});
-  mark(svg, 'text', {x: Math.min(ax + 6, w - r - 44), y: t + 2, class: 'value'}, 'avg ' + AVG_LAT.toFixed(2) + 's');
+  mark(svg, 'text', {x: w - r, y: t + 10, 'text-anchor': 'end', class: 'value'}, 'avg ' + AVG_LAT.toFixed(2) + 's');
   mark(svg, 'text', {x: (l + w - r) / 2, y: h - 4, 'text-anchor': 'middle'}, 'Seconds per call');
 }
 function drawSweep() {
